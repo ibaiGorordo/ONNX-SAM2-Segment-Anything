@@ -26,7 +26,7 @@ for label_id, (point_coord, point_label) in enumerate(zip(point_coords, point_la
         sam2.add_point((point_coord[i][0], point_coord[i][1]), point_label[i], label_id)
 
     # Decode image
-    masks, scores = sam2.update_mask(select_best=True)
+    masks = sam2.update_mask(select_best=True)
 
     # Draw masks
     masked_img = draw_masks(img, masks)
