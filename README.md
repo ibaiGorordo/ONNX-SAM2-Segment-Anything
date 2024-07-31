@@ -37,6 +37,11 @@ Runs the image segmentation model on an image given some points defined in the s
  python image_segmentation.py
  ```
 
+Usage:
+- point_coords: This is a list of 2D numpy arrays, where each element in the list correspond to a different label. For example, for 3 different labels, the list will contain 3 numpy arrays. Each numpy array contains Nx2 points, where N is the number of points and the second axis contains the X,Y coordinates (of the original image)
+- point_labels: This is a list of 1D numpy arrays, where each element in the list correspond to a different label. For example, for 3 different labels, the list will contain 3 numpy arrays. Each numpy array contains N points, where N is the number of points. The value can be 0 or 1, where 0 represents a negative value and 1 a positive value, i.e. the objects is present at that pixel location.
+
+
  * **SAM2 Annotation App**:
 A minimal GUI to annotate images with the SAM2 model.
  ```shell
