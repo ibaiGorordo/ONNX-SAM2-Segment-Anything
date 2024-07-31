@@ -42,8 +42,7 @@ A minimal GUI to annotate images with the SAM2 model.
  ```shell
  python webcam_depth_estimation.py
  ```
-
-Controls:
+Annotation Controls (Video: https://youtu.be/9lW3_g1fjnA?si=X49Vz1ow45NMMYVn)
 - **Left click**: Adds a positive point, but if another point is close enough, it will delete it
 - **Right click**: Adds a negative point
 - **Add label button**: Adds a new label for annotation
