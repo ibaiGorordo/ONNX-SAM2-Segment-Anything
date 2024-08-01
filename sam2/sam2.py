@@ -171,9 +171,9 @@ class SAM2ImageDecoder:
         else:
             max_num_points = max([coords.shape[0] for coords in point_coords])
             # We need to make sure that all inputs have the same number of points
-            # Add invalid points to pad the input (-1000, -1000) with 0 value for labels
-            input_point_coords = np.ones((len(point_coords), max_num_points, 2), dtype=np.float32) * -1
-            input_point_labels = np.zeros((len(point_coords), max_num_points), dtype=np.float32)
+            # Add invalid points to pad the input (0, 0) with -1 value for labels
+            input_point_coords = np.zeros((len(point_coords), max_num_points, 2), dtype=np.float32)
+            input_point_labels = np.ones((len(point_coords), max_num_points), dtype=np.float32) * -1
 
             for i, (coords, labels) in enumerate(zip(point_coords, point_labels)):
                 input_point_coords[i, :coords.shape[0], :] = coords
