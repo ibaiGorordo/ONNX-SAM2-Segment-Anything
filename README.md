@@ -31,7 +31,8 @@ The original SAM2 model can be found in this repository: [SAM2 Repository](https
 # Examples
 
 ![!ONNX-SAM2-Segment-Anything-iMAGE](https://github.com/ibaiGorordo/ONNX-SAM2-Segment-Anything/raw/main/doc/img/sam2_masked_img.jpg)
- * **Image inference**:
+
+## **Image inference**:
 Runs the image segmentation model on an image given some points defined in the script.
  ```shell
  python image_segmentation.py
@@ -42,7 +43,7 @@ Usage:
 - `point_labels`: This is a list of 1D numpy arrays, where each element in the list correspond to a different label. For example, for 3 different labels, the list will contain 3 numpy arrays. Each numpy array contains N points, where N is the number of points. The value can be 0 or 1, where 0 represents a negative value and 1 a positive value, i.e. the objects is present at that pixel location.
 
 
- * **SAM2 Annotation App**:
+## **SAM2 Annotation App**:
 A minimal GUI to annotate images with the SAM2 model.
  ```shell
  python webcam_depth_estimation.py
