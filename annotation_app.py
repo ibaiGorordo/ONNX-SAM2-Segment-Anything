@@ -4,8 +4,7 @@ import cv2
 from PIL import Image, ImageTk
 
 from sam2 import SAM2Image, draw_masks, colors
-from imread_from_url import imread_from_url
-
+from sam2.utils import read_image_from_url
 class ImageAnnotationApp:
     def __init__(self, root, sam2: SAM2Image):
         self.root = root
@@ -46,9 +45,10 @@ class ImageAnnotationApp:
 
         self.add_label(0)  # Add default label 1
         img_url = "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e2/Dexter_professionellt_fotograferad.jpg/1280px-Dexter_professionellt_fotograferad.jpg"
-        self.image = imread_from_url(img_url)
-        self.mask_image = self.image.copy()
-        self.sam2.set_image(self.image)
+        self.image = read_image_from_url(img_url)
+        if self.image:
+            self.mask_image = self.image.copy()
+            self.sam2.set_image(self.image)
         self.display_image()
 
     def browse_image(self):
@@ -76,7 +76,7 @@ class ImageAnnotationApp:
         self.canvas.create_image(0, 0, anchor=tk.NW, image=self.tk_image)
         self.draw_points()
 
-    def add_label(self, label_id: int = None):
+    def add_label(self, label_id: int | None):
         if label_id is None:
             max_label = max(self.label_ids) if self.label_ids else 0
 
