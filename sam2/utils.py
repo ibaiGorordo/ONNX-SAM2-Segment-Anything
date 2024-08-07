@@ -53,20 +53,3 @@ def draw_mask(
         mask_image = cv2.drawContours(mask_image, contours, -1, color, thickness=2)
 
     return mask_image
-
-
-def read_image_from_url(img_url: str) -> Optional[np.ndarray] :
-    try:
-        response = requests.get(img_url)
-
-        if response.status_code == 200:
-            img_data = response.content
-            img_data = np.asarray(bytearray(response.content), dtype=np.uint8)
-            img = cv2.cvtColor(
-                cv2.imdecode(img_data, cv2.IMREAD_COLOR), cv2.COLOR_BGR2RGB
-            )
-            return img
-        else:
-            return None
-    except Exception as e:
-        raise FileNotFoundError({"error": repr(e)})

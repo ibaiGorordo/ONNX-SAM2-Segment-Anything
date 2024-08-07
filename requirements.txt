@@ -1,4 +1,4 @@
 opencv-python
 Pillow
-requests
 onnxruntime
+imread_from_url

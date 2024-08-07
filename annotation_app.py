@@ -4,7 +4,7 @@ import cv2
 from PIL import Image, ImageTk
 
 from sam2 import SAM2Image, draw_masks, colors
-from sam2.utils import read_image_from_url
+from imread_from_url import imread_from_url
 class ImageAnnotationApp:
     def __init__(self, root, sam2: SAM2Image):
         self.root = root
@@ -45,8 +45,8 @@ class ImageAnnotationApp:
 
         self.add_label(0)  # Add default label 1
         img_url = "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e2/Dexter_professionellt_fotograferad.jpg/1280px-Dexter_professionellt_fotograferad.jpg"
-        self.image = read_image_from_url(img_url)
-        if self.image:
+        self.image = imread_from_url(img_url)
+        if self.image is not None:
             self.mask_image = self.image.copy()
             self.sam2.set_image(self.image)
         self.display_image()
@@ -64,17 +64,18 @@ class ImageAnnotationApp:
             self.display_image()
 
     def display_image(self):
-        if self.mask_image.shape[0] == 0:
-            return
+        if self.mask_image is not None:
+            if self.mask_image.shape[0] == 0:
+                return
 
-        # Convert the image to RGB (from BGR)
-        rgb_image = cv2.cvtColor(self.mask_image, cv2.COLOR_BGR2RGB)
-        # Convert the image to PIL format
-        pil_image = Image.fromarray(rgb_image)
-        self.tk_image = ImageTk.PhotoImage(image=pil_image)
-        self.canvas.config(width=self.tk_image.width(), height=self.tk_image.height())
-        self.canvas.create_image(0, 0, anchor=tk.NW, image=self.tk_image)
-        self.draw_points()
+            # Convert the image to RGB (from BGR)
+            rgb_image = cv2.cvtColor(self.mask_image, cv2.COLOR_BGR2RGB)
+            # Convert the image to PIL format
+            pil_image = Image.fromarray(rgb_image)
+            self.tk_image = ImageTk.PhotoImage(image=pil_image)
+            self.canvas.config(width=self.tk_image.width(), height=self.tk_image.height())
+            self.canvas.create_image(0, 0, anchor=tk.NW, image=self.tk_image)
+            self.draw_points()
 
     def add_label(self, label_id: int | None):
         if label_id is None:
@@ -131,8 +132,9 @@ class ImageAnnotationApp:
                 self.points.remove(point)
 
             masks = self.sam2.update_mask(True)
-            self.mask_image = draw_masks(self.image, masks)
-            self.display_image()
+            if self.image is not None:
+                self.mask_image = draw_masks(self.image, masks)
+                self.display_image()
 
             self.selected_label = None
             if self.label_listbox.size() > 0:
@@ -247,8 +249,8 @@ class ImageAnnotationApp:
 if __name__ == "__main__":
     root = tk.Tk()
 
-    encoder_model_path = "models/sam2_hiera_base_plus_encoder.onnx"
-    decoder_model_path = "models/sam2_hiera_base_plus_decoder.onnx"
+    encoder_model_path = "models/sam2_hiera_tiny_encoder.onnx"
+    decoder_model_path = "models/sam2_hiera_tiny_decoder.onnx"
     sam2 = SAM2Image(encoder_model_path, decoder_model_path)
 
     app = ImageAnnotationApp(root, sam2)
