@@ -188,7 +188,7 @@ class ImageAnnotationApp:
             self.sam2.add_point((x, y), True, label_id)
             print(f"Added point at ({x}, {y}) with label '{self.selected_label}'")
 
-        masks = self.sam2.update_mask(True)
+        masks = self.sam2.update_mask()
         self.mask_image = draw_masks(self.image, masks)
         self.display_image()
 
