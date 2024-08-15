@@ -26,8 +26,9 @@ if img:
         for i in range(point_label.shape[0]):
             sam2.add_point((point_coord[i][0], point_coord[i][1]), point_label[i], label_id)
 
-        # Decode image
-        masks = sam2.update_mask(select_best=True)
+
+    # Decode image
+    masks = sam2.update_mask()
 
         # Draw masks
         masked_img = draw_masks(img, masks)
@@ -36,3 +37,9 @@ if img:
         if cv2.waitKey(1000) & 0xFF == ord('q'):
             break
 
+
+    cv2.imshow("masked_img", masked_img)
+    if cv2.waitKey(1000) & 0xFF == ord('q'):
+        break
+
+cv2.waitKey(0)
