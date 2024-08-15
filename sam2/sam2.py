@@ -222,13 +222,13 @@ class SAM2ImageDecoder:
 
 if __name__ == '__main__':
     from utils import draw_masks
-    from imread_from_url import imread_from_url
+    from sam2.utils import read_image_from_url
 
     encoder_model_path = "../models/sam2_hiera_base_plus_encoder.onnx"
     decoder_model_path = "../models/sam2_hiera_base_plus_decoder.onnx"
 
     img_url = "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Racing_Terriers_%282490056817%29.jpg/1280px-Racing_Terriers_%282490056817%29.jpg"
-    img = imread_from_url(img_url)
+    img = read_image_from_url(img_url)
 
     # Initialize models
     sam2_encoder = SAM2ImageEncoder(encoder_model_path)
