@@ -130,7 +130,7 @@ class ImageAnnotationApp:
                 self.canvas.delete(point[0])
                 self.points.remove(point)
 
-            masks = self.sam2.update_mask(True)
+            masks = self.sam2.update_mask()
             self.mask_image = draw_masks(self.image, masks)
             self.display_image()
 
@@ -208,7 +208,7 @@ class ImageAnnotationApp:
         self.points.append((point, x, y, self.selected_label, False))
 
         self.sam2.add_point((x, y), False, label_id)
-        masks = self.sam2.update_mask(True)
+        masks = self.sam2.update_mask()
         self.mask_image = draw_masks(self.image, masks)
         self.display_image()
 
