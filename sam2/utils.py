@@ -4,18 +4,14 @@ import numpy as np
 rng = np.random.default_rng(2)
 colors = rng.uniform(0, 255, size=(100, 3))
 
-def draw_masks(image: np.ndarray, masks: list[np.ndarray], alpha: float = 0.5, draw_border: bool = True) -> np.ndarray:
-    if image is None:
-        return np.empty(0)
+def draw_masks(image: np.ndarray, masks: dict[int, np.ndarray], alpha: float = 0.5, draw_border: bool = True) -> np.ndarray:
     mask_image = image.copy()
-    for label_id, label_masks in enumerate(masks):
+
+    for label_id, label_masks in masks.items():
+        if label_masks is None:
+            continue
         color = colors[label_id]
-        if label_masks.ndim == 2:
-            mask_image = draw_mask(mask_image, label_masks, (color[0], color[1], color[2]), alpha, draw_border)
-        else:
-            for mask in label_masks:
-                print(mask.shape)
-                mask_image = draw_mask(mask_image, mask, (color[0], color[1], color[2]), alpha, draw_border)
+        mask_image = draw_mask(mask_image, label_masks, (color[0], color[1], color[2]), alpha, draw_border)
 
     return mask_image
 

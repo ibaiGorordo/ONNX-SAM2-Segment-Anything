@@ -11,48 +11,58 @@ class SAM2Image:
     def __init__(self, encoder_path: str, decoder_path: str) -> None:
         # Initialize models
         self.encoder = SAM2ImageEncoder(encoder_path)
-        self.decoder = SAM2ImageDecoder(decoder_path, self.encoder.input_shape[2:])
+        self.orig_im_size = self.encoder.input_shape[2:]
+        self.decoder_path = decoder_path
+        self.decoders = {}
 
-        self.point_coords = []
-        self.point_labels = []
+        self.point_coords = {}
+        self.point_labels = {}
+        self.masks = {}
 
     def set_image(self, image: np.ndarray) -> None:
         self.image_embeddings = self.encoder(image)
         self.orig_im_size = (image.shape[0], image.shape[1])
-        self.decoder.set_image_size((image.shape[0], image.shape[1]))
         self.reset_points()
 
-    def update_mask(self) -> list[np.ndarray]:
-        if not self.point_coords:
-            return [np.empty(0)]
+    def add_point(self, point_coords: tuple[int, int], is_positive: bool, label_id: int) -> dict[int, np.ndarray]:
 
-        high_res_feats_0, high_res_feats_1, image_embed = self.image_embeddings
-        masks, _ = self.decoder(image_embed, high_res_feats_0, high_res_feats_1, self.point_coords, self.point_labels)
-
-        # Set the mask to zeros if no points are present
-        for i, mask in enumerate(masks):
-            if self.point_coords[i].shape[0] == 0:
-                masks[i] = np.zeros((self.orig_im_size[0], self.orig_im_size[1]), dtype=np.uint8)
-
-        return masks
-
-    def add_point(self, point_coords: tuple[int, int], is_positive: bool, label_id: int) -> None:
-        if label_id >= len(self.point_coords):
-            self.point_coords.append(np.array([point_coords]))
-            self.point_labels.append(np.array([1 if is_positive else 0]))
+        if label_id not in self.point_coords:
+            self.point_coords[label_id] = np.array([point_coords])
+            self.point_labels[label_id] = np.array([1 if is_positive else 0])
+            self.decoders[label_id] = SAM2ImageDecoder(self.decoder_path, self.encoder.input_shape[2:], self.orig_im_size)
         else:
-            # new_point_coords = np.array([point_coords])
             self.point_coords[label_id] = np.append(self.point_coords[label_id], np.array([point_coords]), axis=0)
             self.point_labels[label_id] = np.append(self.point_labels[label_id], 1 if is_positive else 0)
 
-    def remove_point(self,  point_coords: tuple[int, int], label_id: int) -> None:
+        decoder = self.decoders[label_id]
+        high_res_feats_0, high_res_feats_1, image_embed = self.image_embeddings
+        mask, _ = decoder(image_embed, high_res_feats_0, high_res_feats_1, self.point_coords[label_id].copy(), self.point_labels[label_id])
+        self.masks[label_id] = mask
+
+        return self.masks
+
+    def remove_point(self,  point_coords: tuple[int, int], label_id: int) -> dict[int, np.ndarray]:
         point_id = np.where((self.point_coords[label_id][:, 0] == point_coords[0]) & (self.point_coords[label_id][:, 1] == point_coords[1]))[0][0]
         self.point_coords[label_id] = np.delete(self.point_coords[label_id], point_id, axis=0)
         self.point_labels[label_id] = np.delete(self.point_labels[label_id], point_id, axis=0)
 
+        if self.point_coords[label_id].shape[0] == 0:
+            self.masks[label_id] = None
+        else:
+            decoder = self.decoders[label_id]
+            high_res_feats_0, high_res_feats_1, image_embed = self.image_embeddings
+            mask, _ = decoder(image_embed, high_res_feats_0, high_res_feats_1, self.point_coords[label_id].copy(), self.point_labels[label_id])
+            self.masks[label_id] = mask
+
+        return self.masks
+
+    def get_masks(self) -> dict[int, np.ndarray]:
+        return self.masks
+
     def reset_points(self) -> None:
-        self.point_coords = []
-        self.point_labels = []
+        self.point_coords = {}
+        self.point_labels = {}
+        self.masks = {}
 
 
 class SAM2ImageEncoder:
@@ -132,15 +142,13 @@ class SAM2ImageDecoder:
 
     def __call__(self, image_embed: np.ndarray,
                  high_res_feats_0: np.ndarray, high_res_feats_1: np.ndarray,
-                 point_coords: list[np.ndarray] | np.ndarray,
-                 point_labels: list[np.ndarray] | np.ndarray) -> tuple[list[np.ndarray], ndarray]:
+                 point_coords: np.ndarray, point_labels: np.ndarray) -> tuple[np.ndarray, ndarray]:
 
         return self.predict(image_embed, high_res_feats_0, high_res_feats_1, point_coords, point_labels)
 
     def predict(self, image_embed: np.ndarray,
                  high_res_feats_0: np.ndarray, high_res_feats_1: np.ndarray,
-                 point_coords: list[np.ndarray] | np.ndarray,
-                 point_labels: list[np.ndarray] | np.ndarray) -> tuple[list[np.ndarray], ndarray]:
+                 point_coords: np.ndarray, point_labels: np.ndarray) -> tuple[np.ndarray, ndarray]:
 
         inputs = self.prepare_inputs(image_embed, high_res_feats_0, high_res_feats_1, point_coords, point_labels)
 
@@ -151,8 +159,7 @@ class SAM2ImageDecoder:
 
     def prepare_inputs(self, image_embed: np.ndarray,
                        high_res_feats_0: np.ndarray, high_res_feats_1: np.ndarray,
-                       point_coords: list[np.ndarray] | np.ndarray,
-                       point_labels: list[np.ndarray] | np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+                       point_coords: np.ndarray, point_labels: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
 
         input_point_coords, input_point_labels = self.prepare_points(point_coords, point_labels)
 
@@ -164,21 +171,10 @@ class SAM2ImageDecoder:
         return image_embed, high_res_feats_0, high_res_feats_1, input_point_coords, input_point_labels, mask_input, has_mask_input, original_size
 
 
-    def prepare_points(self, point_coords: list[np.ndarray] | np.ndarray, point_labels: list[np.ndarray] | np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    def prepare_points(self, point_coords: np.ndarray, point_labels: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
 
-        if isinstance(point_coords, np.ndarray):
-            input_point_coords = point_coords[np.newaxis, ...]
-            input_point_labels = point_labels[np.newaxis, ...]
-        else:
-            max_num_points = max([coords.shape[0] for coords in point_coords])
-            # We need to make sure that all inputs have the same number of points
-            # Add invalid points to pad the input (0, 0) with -1 value for labels
-            input_point_coords = np.zeros((len(point_coords), max_num_points, 2), dtype=np.float32)
-            input_point_labels = np.ones((len(point_coords), max_num_points), dtype=np.float32) * -1
-
-            for i, (coords, labels) in enumerate(zip(point_coords, point_labels)):
-                input_point_coords[i, :coords.shape[0], :] = coords
-                input_point_labels[i, :labels.shape[0]] = labels
+        input_point_coords = point_coords[np.newaxis, ...]
+        input_point_labels = point_labels[np.newaxis, ...]
 
         input_point_coords[..., 0] = input_point_coords[..., 0] / self.orig_im_size[1] * self.encoder_input_size[1]  # Normalize x
         input_point_coords[..., 1] = input_point_coords[..., 1] / self.orig_im_size[0] * self.encoder_input_size[0]  # Normalize y
@@ -194,19 +190,14 @@ class SAM2ImageDecoder:
         print(f"infer time: {(time.perf_counter() - start) * 1000:.2f} ms")
         return outputs
 
-    def process_output(self, outputs: list[np.ndarray]) -> tuple[list[ndarray | Any], ndarray[Any, Any]]:
+    def process_output(self, outputs: list[np.ndarray]) -> tuple[np.ndarray, np.ndarray]:
 
         scores = outputs[1].squeeze()
         masks = outputs[0]
         masks = masks > self.mask_threshold
-        masks = masks.astype(np.uint8)
+        masks = masks.astype(np.uint8).squeeze()
 
-        output_masks = []
-        for label_id in range(masks.shape[0]):
-            label_masks = masks[label_id, 0, ...]
-            output_masks.append(label_masks)
-
-        return output_masks, scores
+        return masks, scores
 
     def set_image_size(self, orig_im_size: tuple[int, int]) -> None:
         self.orig_im_size = orig_im_size
@@ -237,13 +228,13 @@ if __name__ == '__main__':
     # Encode image
     high_res_feats_0, high_res_feats_1, image_embed = sam2_encoder(img)
 
-    point_coords = [np.array([[420,440]]), np.array([[360, 275], [370, 210]]), np.array([[810, 440]]), np.array([[920, 314]])]
-    point_labels = [np.array([1]), np.array([1,1]), np.array([1]), np.array([1])]
+    point_coords = np.array([[420,440]])
+    point_labels = np.array([1])
 
     # Decode image
     masks, scores = sam2_decoder(image_embed, high_res_feats_0, high_res_feats_1, point_coords, point_labels)
 
-    masked_img = draw_masks(img, masks)
+    masked_img = draw_masks(img, {0: masks})
 
     cv2.imwrite("../doc/img/sam2_masked_img.jpg", masked_img)
 
