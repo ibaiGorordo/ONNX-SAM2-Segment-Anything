@@ -16,6 +16,7 @@ class SAM2Image:
         self.decoders = {}
 
         self.point_coords = {}
+        self.box_coords = {}
         self.point_labels = {}
         self.masks = {}
 
@@ -26,43 +27,82 @@ class SAM2Image:
 
     def add_point(self, point_coords: tuple[int, int], is_positive: bool, label_id: int) -> dict[int, np.ndarray]:
 
+        if label_id not in self.decoders:
+            self.decoders[label_id] = SAM2ImageDecoder(self.decoder_path, self.encoder.input_shape[2:], self.orig_im_size)
+
         if label_id not in self.point_coords:
             self.point_coords[label_id] = np.array([point_coords])
             self.point_labels[label_id] = np.array([1 if is_positive else 0])
-            self.decoders[label_id] = SAM2ImageDecoder(self.decoder_path, self.encoder.input_shape[2:], self.orig_im_size)
         else:
             self.point_coords[label_id] = np.append(self.point_coords[label_id], np.array([point_coords]), axis=0)
             self.point_labels[label_id] = np.append(self.point_labels[label_id], 1 if is_positive else 0)
 
+        return self.decode_mask(label_id)
+
+    def set_box(self, box_coords: tuple[tuple[int, int], tuple[int, int]], label_id: int) -> dict[int, np.ndarray]:
+
+        if label_id not in self.decoders:
+            self.decoders[label_id] = SAM2ImageDecoder(self.decoder_path, self.encoder.input_shape[2:], self.orig_im_size)
+
+        point_coords = np.array([box_coords[0], box_coords[1]]) # Convert from 1x4 to 2x2
+
+        self.box_coords[label_id] = point_coords
+
+        return self.decode_mask(label_id)
+
+    def decode_mask(self, label_id: int) -> dict[int, np.ndarray]:
+        concat_coords, concat_labels = self.merge_points_and_boxes(label_id)
+
         decoder = self.decoders[label_id]
         high_res_feats_0, high_res_feats_1, image_embed = self.image_embeddings
-        mask, _ = decoder(image_embed, high_res_feats_0, high_res_feats_1, self.point_coords[label_id].copy(), self.point_labels[label_id])
+        if concat_coords.size == 0:
+            mask = np.zeros((self.orig_im_size[0], self.orig_im_size[1]), dtype=np.uint8)
+        else:
+            mask, _ = decoder(image_embed, high_res_feats_0, high_res_feats_1, concat_coords, concat_labels)
         self.masks[label_id] = mask
 
         return self.masks
+
+    def merge_points_and_boxes(self, label_id: int) -> tuple[np.ndarray, np.ndarray]:
+        concat_coords = []
+        concat_labels = []
+        has_points = label_id in self.point_coords
+        has_boxes = label_id in self.box_coords
+
+        if not has_points and not has_boxes:
+            return np.array([]), np.array([])
+
+        if has_points:
+            concat_coords.append(self.point_coords[label_id])
+            concat_labels.append(self.point_labels[label_id])
+        if has_boxes:
+            concat_coords.append(self.box_coords[label_id])
+            concat_labels.append(np.array([2, 3]))
+        concat_coords = np.concatenate(concat_coords, axis=0)
+        concat_labels = np.concatenate(concat_labels, axis=0)
+
+        return concat_coords, concat_labels
 
     def remove_point(self,  point_coords: tuple[int, int], label_id: int) -> dict[int, np.ndarray]:
         point_id = np.where((self.point_coords[label_id][:, 0] == point_coords[0]) & (self.point_coords[label_id][:, 1] == point_coords[1]))[0][0]
         self.point_coords[label_id] = np.delete(self.point_coords[label_id], point_id, axis=0)
         self.point_labels[label_id] = np.delete(self.point_labels[label_id], point_id, axis=0)
 
-        if self.point_coords[label_id].shape[0] == 0:
-            self.masks[label_id] = None
-        else:
-            decoder = self.decoders[label_id]
-            high_res_feats_0, high_res_feats_1, image_embed = self.image_embeddings
-            mask, _ = decoder(image_embed, high_res_feats_0, high_res_feats_1, self.point_coords[label_id].copy(), self.point_labels[label_id])
-            self.masks[label_id] = mask
+        return self.decode_mask(label_id)
 
-        return self.masks
+    def remove_box(self, label_id: int) -> dict[int, np.ndarray]:
+        del self.box_coords[label_id]
+        return self.decode_mask(label_id)
 
     def get_masks(self) -> dict[int, np.ndarray]:
         return self.masks
 
     def reset_points(self) -> None:
         self.point_coords = {}
+        self.box_coords = {}
         self.point_labels = {}
         self.masks = {}
+        self.decoders = {}
 
 
 class SAM2ImageEncoder:
@@ -214,6 +254,7 @@ class SAM2ImageDecoder:
 if __name__ == '__main__':
     from utils import draw_masks
     from imread_from_url import imread_from_url
+    import matplotlib.pyplot as plt
 
     encoder_model_path = "../models/sam2_hiera_base_plus_encoder.onnx"
     decoder_model_path = "../models/sam2_hiera_base_plus_decoder.onnx"
@@ -221,20 +262,25 @@ if __name__ == '__main__':
     img_url = "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Racing_Terriers_%282490056817%29.jpg/1280px-Racing_Terriers_%282490056817%29.jpg"
     img = imread_from_url(img_url)
 
-    # Initialize models
-    sam2_encoder = SAM2ImageEncoder(encoder_model_path)
-    sam2_decoder = SAM2ImageDecoder(decoder_model_path, sam2_encoder.input_shape[2:], img.shape[:2])
+    # Initialize model
+    sam2 = SAM2Image(encoder_model_path, decoder_model_path)
 
     # Encode image
-    high_res_feats_0, high_res_feats_1, image_embed = sam2_encoder(img)
+    sam2.set_image(img)
 
-    point_coords = np.array([[420,440]])
-    point_labels = np.array([1])
+    point_coords = (345, 300)
+    box_coords = ((0, 100), (600, 700))
+    label_id = 0
+    is_positive = False
 
     # Decode image
-    masks, scores = sam2_decoder(image_embed, high_res_feats_0, high_res_feats_1, point_coords, point_labels)
+    sam2.add_point(point_coords, is_positive, label_id)
+    sam2.set_box(box_coords, label_id)
+    masks = sam2.get_masks()
 
-    masked_img = draw_masks(img, {0: masks})
+    masked_img = draw_masks(img, masks)
+    cv2.circle(masked_img, point_coords, 5, (0, 0, 255), -1)
+    cv2.rectangle(masked_img, box_coords[0], box_coords[1], (0, 255, 0), 2)
 
     cv2.imwrite("../doc/img/sam2_masked_img.jpg", masked_img)
 
