@@ -1,6 +1,5 @@
 # ONNX-SAM2-Segment-Anything
-
-![!ONNX-SAM2-Segment-Anything](https://github.com/ibaiGorordo/ONNX-SAM2-Segment-Anything/raw/main/doc/img/sam2_annotation.gif)
+![!ONNX-SAM2-Segment-Anything](https://github.com/ibaiGorordo/ONNX-SAM2-Segment-Anything/raw/main/doc/img/sam2_mask_with_boxes.png)
 
 # Important
 - Still in development, use it at your own risk.
@@ -43,6 +42,7 @@ Usage:
 - `point_labels`: This is a list of 1D numpy arrays, where each element in the list correspond to a different label. For example, for 3 different labels, the list will contain 3 numpy arrays. Each numpy array contains N points, where N is the number of points. The value can be 0 or 1, where 0 represents a negative value and 1 a positive value, i.e. the objects is present at that pixel location.
 
 
+![!ONNX-SAM2-Segment-Anything](https://github.com/ibaiGorordo/ONNX-SAM2-Segment-Anything/raw/main/doc/img/sam2_annotation.gif)
 ## **SAM2 Annotation App**:
 A minimal GUI to annotate images with the SAM2 model.
  ```shell
@@ -51,6 +51,7 @@ A minimal GUI to annotate images with the SAM2 model.
 Annotation Controls (Video: https://youtu.be/9lW3_g1fjnA?si=X49Vz1ow45NMMYVn)
 - **Left click**: Adds a positive point, but if another point is close enough, it will delete it
 - **Right click**: Adds a negative point
+- **Left click and drag**: Draws a rectangle
 - **Add label button**: Adds a new label for annotation
 - **Delete label button**: Deletes the last label
 
