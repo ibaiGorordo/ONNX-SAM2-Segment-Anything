@@ -5,7 +5,7 @@ from imread_from_url import imread_from_url
 
 
 encoder_model_path = "models/sam2_hiera_base_plus_encoder.onnx"
-decoder_model_path = "models/sam2_hiera_base_plus_decoder.onnx"
+decoder_model_path = "models/decoder.onnx"
 
 img_url = "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Racing_Terriers_%282490056817%29.jpg/1280px-Racing_Terriers_%282490056817%29.jpg"
 img = imread_from_url(img_url)
