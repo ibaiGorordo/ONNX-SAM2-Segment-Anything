@@ -370,7 +370,7 @@ if __name__ == "__main__":
     root = tk.Tk()
 
     encoder_model_path = "models/sam2_hiera_base_plus_encoder.onnx"
-    decoder_model_path = "models/sam2_hiera_base_plus_decoder.onnx"
+    decoder_model_path = "models/decoder.onnx"
     sam2 = SAM2Image(encoder_model_path, decoder_model_path)
 
     app = ImageAnnotationApp(root, sam2)
