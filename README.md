@@ -4,7 +4,7 @@
 # Important
 - Still in development, use it at your own risk.
 - For now only the image prediction is available, the video prediction will be available soon.
-- Other limitations: Only default resolution, no box input (only points and mask) and maybe more
+- Other limitations: Only default resolution (1024x1024)
 
 # Installation
 ```shell
